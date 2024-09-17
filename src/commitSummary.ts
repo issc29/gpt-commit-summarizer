@@ -9,6 +9,9 @@ import {
 } from "./openAi";
 import { SHARED_PROMPT } from "./sharedPrompt";
 import { summarizePr } from "./summarizePr";
+import {EventSourceParserStream} from 'eventsource-parser/stream'
+
+const poolsideKey = process.env.POOLSIDE_KEY
 
 const OPEN_AI_PRIMING = `${SHARED_PROMPT}
 After the git diff of the first file, there will be an empty line, and then the git diff of the next file. 
@@ -70,6 +73,53 @@ function postprocessSummary(
     summary = summary.split(`[${fileName}]`).join(`[${shortName}](${link})`);
   }
   return summary;
+}
+
+async function getPoolsideCompletion(
+  comparison: Awaited<ReturnType<typeof octokit.repos.compareCommits>>,
+  completion: string,
+  diffMetadata: gitDiffMetadata
+): Promise<string> {
+  try {
+    const diffResponse = await octokit.request(comparison.url);
+
+    const rawGitDiff = diffResponse.data.files
+      .map((file: any) => formatGitDiff(file.filename, file.patch))
+      .join("\n");
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    const poolsidePrompt = `what has changed in this git diff?\n\`\`\`\n${rawGitDiff}\n\`\`\`\n:\n`;
+
+    console.log(
+      `poolside prompt for commit ${diffMetadata.commit.data.sha}: ${poolsidePrompt}`
+    );
+
+    var lastResponse
+    const url = 'https://api.poolsi.de/v0/prompt';
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${poolsideKey}`,
+        },
+        body: JSON.stringify(poolsidePrompt)
+    })
+
+    if (response == null || response.body == null) {
+    return completion = "Could not generate"
+    }
+
+    const reader = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new EventSourceParserStream()).getReader()
+    
+    while (true) {
+        const {value, done} = await reader.read();
+    if (done) break;
+       lastResponse =JSON.parse(value.data) // or just `value` if you don't need to parse it as JSON.parse() does.value)
+    }
+     completion = lastResponse.response.content
+  } catch (error) {
+    console.error(error);
+  }
+  return completion;
 }
 
 async function getOpenAICompletion(
