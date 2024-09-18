@@ -105,10 +105,11 @@ async function getPoolsideCompletion(
     })
     
     console.log(JSON.stringify(poolsidePrompt))
+    console.log(response)
 
     if (response == null || response.body == null) {
       console.log(response)
-    return completion = "Could not generate"
+      return completion = "Could not generate"
     }
 
     const reader = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new EventSourceParserStream()).getReader()
