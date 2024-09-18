@@ -115,6 +115,7 @@ async function getPoolsideCompletion(
     if (done) break;
        lastResponse =JSON.parse(value.data) // or just `value` if you don't need to parse it as JSON.parse() does.value)
     }
+    console.log(lastResponse)
      completion = lastResponse.response.content
   } catch (error) {
     console.error(error);
