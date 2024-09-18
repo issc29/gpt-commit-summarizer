@@ -112,6 +112,7 @@ async function getPoolsideCompletion(
     
     while (true) {
         const {value, done} = await reader.read();
+        console.log(value)
     if (done) break;
        lastResponse =JSON.parse(value.data) // or just `value` if you don't need to parse it as JSON.parse() does.value)
     }
