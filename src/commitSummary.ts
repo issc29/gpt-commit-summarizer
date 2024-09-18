@@ -103,8 +103,11 @@ async function getPoolsideCompletion(
         },
         body: JSON.stringify(poolsidePrompt)
     })
+    
+    console.log(JSON.stringify(poolsidePrompt))
 
     if (response == null || response.body == null) {
+      console.log(response)
     return completion = "Could not generate"
     }
 
