@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: KanHarI/gpt-commit-summarizer@master
+      - uses: issc29/gpt-commit-summarizer@poolside2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          POOLSIDE_KEY: ${{ secrets.POOLSIDE_KEY }}
