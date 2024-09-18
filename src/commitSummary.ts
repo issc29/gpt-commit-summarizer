@@ -88,6 +88,7 @@ async function getPoolsideCompletion(
       .join("\n");
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     const poolsidePrompt = `what has changed in this git diff?\n\`\`\`\n${rawGitDiff}\n\`\`\`\n:\n`;
+    const jsonBody = {"prompt":poolsidePrompt,"context":{}}
 
     console.log(
       `poolside prompt for commit ${diffMetadata.commit.data.sha}: ${poolsidePrompt}`
@@ -101,10 +102,10 @@ async function getPoolsideCompletion(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${poolsideKey}`,
         },
-        body: JSON.stringify(poolsidePrompt)
+        body: JSON.stringify(jsonBody)
     })
     
-    console.log(JSON.stringify(poolsidePrompt))
+    console.log(JSON.stringify(jsonBody))
     console.log(response)
 
     if (response == null || response.body == null) {
