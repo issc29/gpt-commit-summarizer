@@ -245,7 +245,7 @@ export async function summarizeCommits(
 
     let completion = "Error: couldn't generate summary";
     if (!isMergeCommit) {
-      completion = await getOpenAICompletion(comparison, completion, {
+      completion = await getPoolsideCompletion(comparison, completion, {
         sha: commit.sha,
         issueNumber: pullNumber,
         repository,
