@@ -9,6 +9,9 @@ import {
   TEMPERATURE,
 } from "./openAi";
 import { SHARED_PROMPT } from "./sharedPrompt";
+import {EventSourceParserStream} from 'eventsource-parser/stream'
+
+const poolsideKey = process.env.POOLSIDE_KEY
 
 const linkRegex =
   /\[(?:[a-f0-9]{6}|None)\]\(https:\/\/github\.com\/.*?#([a-f0-9]{40}|None)\)/;
@@ -39,25 +42,38 @@ async function getOpenAISummaryForFile(
   try {
     const openAIPrompt = `${OPEN_AI_PROMPT}\n\nTHE GIT DIFF OF ${filename} TO BE SUMMARIZED:\n\`\`\`\n${patch}\n\`\`\`\n\nSUMMARY:\n`;
     console.log(`OpenAI file summary prompt for ${filename}:\n${openAIPrompt}`);
+    const jsonBody = {"prompt":openAIPrompt,"context":{}}
+    var completion = ""
+    var lastResponse
+    const url = 'https://api.poolsi.de/v0/prompt';
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${poolsideKey}`,
+        },
+        body: JSON.stringify(jsonBody)
+    })
+    
+    console.log(JSON.stringify(jsonBody))
+    console.log(response)
 
-    if (openAIPrompt.length > MAX_OPEN_AI_QUERY_LENGTH) {
-      throw new Error("OpenAI query too big");
+    if (response == null || response.body == null) {
+      console.log(response)
+      return completion = "Could not generate"
     }
 
-    const response = await openai.createCompletion({
-      model: MODEL_NAME,
-      prompt: openAIPrompt,
-      max_tokens: MAX_TOKENS,
-      temperature: TEMPERATURE,
-    });
-    if (
-      response.data.choices !== undefined &&
-      response.data.choices.length > 0
-    ) {
-      return (
-        response.data.choices[0].text ?? "Error: couldn't generate summary"
-      );
+    const reader = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new EventSourceParserStream()).getReader()
+    
+    while (true) {
+        const {value, done} = await reader.read();
+        console.log(value)
+    if (done) break;
+      lastResponse =JSON.parse(value.data) // or just `value` if you don't need to parse it as JSON.parse() does.value)
     }
+    console.log(lastResponse)
+    completion = lastResponse.response.content
+    return completion
   } catch (error) {
     console.error(error);
   }
