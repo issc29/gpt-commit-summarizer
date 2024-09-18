@@ -5,7 +5,9 @@ import {
   openai,
   TEMPERATURE,
 } from "./openAi";
+import {EventSourceParserStream} from 'eventsource-parser/stream'
 
+const poolsideKey = process.env.POOLSIDE_KEY
 const OPEN_AI_PROMPT = `You are an expert programmer, and you are trying to summarize a pull request.
 You went over every commit that is part of the pull request and over every file that was changed in it.
 For some of these, there was an error in the commit summary, or in the files diff summary.
@@ -43,18 +45,41 @@ export async function summarizePr(
   THE PULL REQUEST SUMMARY:\n`;
   console.log(`OpenAI for PR summary prompt:\n${openAIPrompt}`);
 
-  if (openAIPrompt.length > MAX_OPEN_AI_QUERY_LENGTH) {
-    return "Error: couldn't generate summary. PR too big";
-  }
-
+  const jsonBody = {"prompt":openAIPrompt,"context":{}}
   try {
-    const response = await openai.createCompletion({
-      model: MODEL_NAME,
-      prompt: openAIPrompt,
-      max_tokens: MAX_TOKENS,
-      temperature: TEMPERATURE,
-    });
-    return response.data.choices[0].text ?? "Error: couldn't generate summary";
+
+
+    var completion = ""
+    var lastResponse
+    const url = 'https://api.poolsi.de/v0/prompt';
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${poolsideKey}`,
+        },
+        body: JSON.stringify(jsonBody)
+    })
+    
+    console.log(JSON.stringify(jsonBody))
+    console.log(response)
+
+    if (response == null || response.body == null) {
+      console.log(response)
+      return completion = "Could not generate"
+    }
+
+    const reader = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new EventSourceParserStream()).getReader()
+    
+    while (true) {
+        const {value, done} = await reader.read();
+        console.log(value)
+    if (done) break;
+      lastResponse =JSON.parse(value.data) // or just `value` if you don't need to parse it as JSON.parse() does.value)
+    }
+    console.log(lastResponse)
+    completion = lastResponse.response.content
+    return completion
   } catch (error) {
     console.error(error);
     return "Error: couldn't generate summary";
